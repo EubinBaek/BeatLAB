@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEATLAB – Sign Up</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+  <div class="blob-wrap">
+    <div class="blob"></div>
+  </div>
+
+  <div class="page">
+    <div class="auth-center">
+      <a href="index.html"><img src="Logo.png" alt="BEATLAB" style="height:56px;object-fit:contain;" /></a>
+
+      <p class="subtitle">
+        Enter your details to create your account.
+      </p>
+
+      <form class="form-group" onsubmit="handleSignup(event)">
+        <div>
+          <label>Name</label>
+          <input type="text" id="full-name" placeholder="Enter your Name" required />
+        </div>
+        <div>
+          <label>User ID</label>
+          <div style="position:relative;">
+            <input type="text" id="nickname" placeholder="Enter your User ID" required style="padding-right:36px;" oninput="clearFieldErr('nickname')" />
+            <span id="nickname-x" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#e05a3a;font-size:1rem;font-weight:700;pointer-events:none;">✕</span>
+          </div>
+          <p id="nickname-err" style="display:none;color:#e05a3a;font-size:0.75rem;margin-top:6px;"></p>
+        </div>
+        <div>
+          <label>Email Address</label>
+          <div style="position:relative;">
+            <input type="email" id="email" placeholder="Enter your Email Address" required style="padding-right:36px;" oninput="clearFieldErr('email')" />
+            <span id="email-x" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#e05a3a;font-size:1rem;font-weight:700;pointer-events:none;">✕</span>
+          </div>
+          <p id="email-err" style="display:none;color:#e05a3a;font-size:0.75rem;margin-top:6px;"></p>
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Create a password" required />
+          <div style="height:8px;"></div>
+          <input type="password" id="confirm" placeholder="Confirm Password" required />
+        </div>
+        <p class="auth-note">
+          Already have an account? <a href="login.html">Log In</a>
+        </p>
+        <button type="submit" class="btn btn-teal">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const fullNameEl = document.getElementById('full-name');
+    const nicknameEl = document.getElementById('nickname');
+    const emailEl = document.getElementById('email');
+    const pwEl = document.getElementById('password');
+    const cfEl = document.getElementById('confirm');
+
+    function showFieldErr(field, msg) {
+      document.getElementById(field + '-x').style.display = '';
+      document.getElementById(field + '-err').style.display = '';
+      document.getElementById(field + '-err').textContent = msg;
+      document.getElementById(field).style.borderColor = '#e05a3a';
+    }
+    function clearFieldErr(field) {
+      document.getElementById(field + '-x').style.display = 'none';
+      document.getElementById(field + '-err').style.display = 'none';
+      document.getElementById(field).style.borderColor = '';
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const fullName = fullNameEl.value.trim();
+      const nickname = nicknameEl.value.trim();
+      const email    = emailEl.value.trim();
+      const pw       = pwEl.value;
+      const cf       = cfEl.value;
+
+      if (pw !== cf) { showFieldErr('email', 'Passwords do not match.'); return; }
+      if (pw.length < 6) { showFieldErr('email', 'Password must be at least 6 characters.'); return; }
+
+      const btn = e.target.querySelector('button');
+      btn.textContent = 'Creating account…';
+      btn.disabled = true;
+      clearFieldErr('nickname');
+      clearFieldErr('email');
+
+      try {
+        // Check if User ID is already taken
+        const { data: existingNick } = await sb
+          .from('profiles').select('id').eq('nickname', nickname).maybeSingle();
+
+        if (existingNick) {
+          showFieldErr('nickname', '이미 사용 중인 User ID입니다.');
+          return;
+        }
+
+        const { data, error } = await sb.auth.signUp({
+          email,
+          password: pw,
+          options: { data: { nickname, full_name: fullName } },
+        });
+
+        if (error) {
+          const em = error.message.toLowerCase();
+          if (em.includes('already registered') || em.includes('already been registered')) {
+            showFieldErr('email', '이미 사용 중인 이메일 주소입니다.');
+          } else {
+            showFieldErr('email', error.message);
+          }
+          return;
+        }
+
+        if (data?.user) {
+          await sb.from('profiles').upsert({
+            id: data.user.id,
+            full_name: fullName,
+            nickname,
+          }, { onConflict: 'id' });
+        }
+
+        navigateTo('onboarding.html');
+      } catch (err) {
+        showFieldErr('email', err.message || '회원가입 중 오류가 발생했습니다.');
+      } finally {
+        btn.textContent = 'Sign In';
+        btn.disabled = false;
+      }
+    }
+  </script>
+  <script src="background.js"></script>
+  <script src="transition.js"></script>
+</body>
+</html>

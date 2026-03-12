@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEATLAB – Log In</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+  <div class="blob-wrap">
+    <div class="blob"></div>
+  </div>
+
+  <div class="page">
+    <div class="auth-center">
+      <a href="index.html"><img src="Logo.png" alt="BEATLAB" style="height:56px;object-fit:contain;" /></a>
+
+      <p class="subtitle">
+        Log in to your BeatLab account.<br>
+        Enter your email and password to continue.
+      </p>
+
+      <form class="form-group" onsubmit="handleLogin(event)" style="gap:10px;">
+        <input type="email" id="email" placeholder="Email Address" required />
+        <input type="password" id="password" placeholder="Password" required />
+        <a href="#" class="forgot-link" style="margin-bottom:18px;">Forgot Password?</a>
+        <button type="submit" class="btn btn-teal">Log In</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const formEl = document.querySelector('.form-group');
+    const emailEl = document.getElementById('email');
+    const pwEl = document.getElementById('password');
+    const forgotLinkEl = document.querySelector('.forgot-link');
+
+    const errMsg = document.createElement('p');
+    errMsg.style.cssText = 'color:#e05a3a;font-size:0.8rem;text-align:center;margin-top:4px;';
+    formEl.appendChild(errMsg);
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = emailEl.value.trim();
+      const pw = pwEl.value;
+
+      const btn = e.target.querySelector('button');
+      btn.textContent = 'Logging in…';
+      btn.disabled = true;
+      errMsg.textContent = '';
+
+      try {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if (error) {
+          errMsg.textContent = error.message;
+          return;
+        }
+        navigateTo('upload.html');
+      } catch (err) {
+        errMsg.textContent = err.message || 'Login failed.';
+      } finally {
+        btn.textContent = 'Log In';
+        btn.disabled = false;
+      }
+    }
+
+    // 비밀번호 찾기
+    forgotLinkEl.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = emailEl.value.trim();
+      if (!email) { errMsg.textContent = 'Enter your email first.'; return; }
+      const { error } = await sb.auth.resetPasswordForEmail(email);
+      errMsg.style.color = error ? '#e05a3a' : '#4DD4C8';
+      errMsg.textContent = error ? error.message : 'Reset link sent! Check your email.';
+    });
+  </script>
+  <script src="background.js"></script>
+  <script src="transition.js"></script>
+</body>
+</html>

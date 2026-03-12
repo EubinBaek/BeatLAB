@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEATLAB – Upload</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth-guard.js"></script>
+  <style>html, body { height: auto; overflow-y: auto; }</style>
+</head>
+<body>
+  <div class="blob-wrap">
+    <div class="blob"></div>
+  </div>
+
+  <nav class="navbar navbar-fixed">
+    <a href="upload.html" onclick="event.preventDefault();navigateTo('upload.html')" ><img src="Logo.png" alt="BEATLAB" style="height:36px;object-fit:contain;" /></a>
+    <nav>
+      <div class="lang-dropdown" id="langDropdown">
+        <button class="lang-btn" onclick="toggleLang()"><svg class="globe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>English</button>
+        <div class="lang-menu">
+          <a href="#" onclick="setLang('en','English',this)" class="active">English</a>
+          <a href="#" onclick="setLang('es','Español',this)">Español</a>
+          <a href="#" onclick="setLang('fr','Français',this)">Français</a>
+          <a href="#" onclick="setLang('ko','한국어',this)">한국어</a>
+          <a href="#" onclick="setLang('zh','中文',this)">中文</a>
+          <a href="#" onclick="setLang('ja','日本語',this)">日本語</a>
+          <a href="#" onclick="setLang('de','Deutsch',this)">Deutsch</a>
+        </div>
+      </div>
+      <a href="journal.html" class="nav-journal" data-text="Practice Journal" onclick="event.preventDefault();navigateTo('journal.html')">Practice Journal</a>
+      <a href="profile.html" class="nav-profile" onclick="event.preventDefault();navigateTo('profile.html')"><div class="nav-profile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><span class="nav-profile-id" id="nav-user-id"></span></a>
+    </nav>
+  </nav>
+
+  <div class="page page-fixed">
+
+    <div class="upload-page-body">
+    <div class="upload-wrap">
+      <h1>Upload your drum score</h1>
+      <p class="upload-desc">Upload a drum score to analyze its techniques and get practice song recommendations.</p>
+
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+        <div class="dropzone-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <p id="drop-text">
+          Drag and drop your drum score here<br>or click to upload
+        </p>
+        <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.xml,.mxl" style="display:none;" onchange="handleFile(event)" />
+      </div>
+
+      <div class="practice-section">
+        <div>
+          <span class="practice-label">Practice Direction Option</span>
+        </div>
+        <p class="practice-question">What kind of practice songs would you like?</p>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="difficulty" value="easier" />
+            Easier
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="difficulty" value="similar" checked />
+            Similar Difficulty
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="difficulty" value="harder" />
+            Harder
+          </label>
+        </div>
+      </div>
+
+      <div class="analyze-btn-wrap">
+        <button class="btn btn-teal" onclick="startAnalyze()">Analyze</button>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const dropzone = document.getElementById('dropzone');
+    const dropTextEl = document.getElementById('drop-text');
+    const analyzeBtn = document.querySelector('.analyze-btn-wrap .btn');
+    let selectedFile = null;
+
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) showFile(file);
+    });
+
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if (file) showFile(file);
+    }
+
+    function showFile(file) {
+      selectedFile = file;
+      dropTextEl.innerHTML =
+        `<span class="file-name">📄 ${file.name.replace(/[<>&]/g, '')}</span><br><span style="font-size:0.78rem;color:#888;">Click to change file</span>`;
+    }
+
+    // PDF → 첫 페이지 PNG base64 변환 (고해상도)
+    async function pdfToBase64(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      // scale 3.5로 높여서 텍스트 인식 정확도 향상
+      const viewport = page.getViewport({ scale: 3.5 });
+      const canvas = document.createElement('canvas');
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      // PNG 대신 JPEG quality 0.92로 압축해서 base64 크기 줄임 (OCR 품질 유지)
+      return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+    }
+
+    // 이미지 → base64 변환 (OCR 최적 해상도로 리사이즈)
+    function imageToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            // 장변이 2400px 이하이면 그대로, 초과하면 2400px로 리사이즈
+            const MAX = 2400;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+              else        { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function startAnalyze() {
+      if (!selectedFile) {
+        alert('Please upload a drum score file first.');
+        return;
+      }
+
+      analyzeBtn.textContent = 'Preparing…';
+      analyzeBtn.disabled = true;
+
+      try {
+        let base64, mimeType;
+        const isPDF = selectedFile.type === 'application/pdf' ||
+                      selectedFile.name.toLowerCase().endsWith('.pdf');
+
+        if (isPDF) {
+          base64   = await pdfToBase64(selectedFile);
+          mimeType = 'image/jpeg';
+        } else {
+          base64   = await imageToBase64(selectedFile);
+          mimeType = 'image/jpeg';
+        }
+
+        const difficulty = document.querySelector('input[name="difficulty"]:checked')?.value || 'similar';
+
+        sessionStorage.setItem('bl_image_base64',  base64);
+        sessionStorage.setItem('bl_image_type',    mimeType);
+        sessionStorage.setItem('bl_difficulty',    difficulty);
+
+        navigateTo('analyzing.html');
+      } catch (err) {
+        alert('Failed to process file: ' + err.message);
+        analyzeBtn.textContent = 'Analyze';
+        analyzeBtn.disabled = false;
+      }
+    }
+  </script>
+  <script src="background.js"></script>
+  <script src="lang.js"></script>
+  <script src="transition.js"></script>
+</body>
+</html>

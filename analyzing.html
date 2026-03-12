@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEATLAB – Analyzing</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth-guard.js"></script>
+  <style>
+    /* ── Letter bounce ── */
+    .analyzing-letters {
+      display: flex;
+      gap: 1px;
+      justify-content: center;
+      align-items: flex-end;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--text-dark);
+      height: 2.2rem;
+    }
+
+    .analyzing-letters span {
+      display: inline-block;
+      animation: letterBounce 1.4s ease-in-out infinite;
+      animation-delay: calc(var(--i) * 0.1s);
+    }
+
+    @keyframes letterBounce {
+      0%, 60%, 100% { transform: translateY(0px); }
+      30%           { transform: translateY(-14px); }
+      45%           { transform: translateY(-5px); }
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar-wrap {
+      width: min(520px, 72vw);
+      height: 2px;
+      background: rgba(180, 140, 120, 0.22);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4DD4C8, #E8705A);
+      border-radius: 2px;
+      animation: progress 28s cubic-bezier(0.1, 0, 0.3, 1) forwards;
+    }
+
+    @keyframes progress {
+      0%   { width: 0%; }
+      10%  { width: 18%; }
+      30%  { width: 45%; }
+      60%  { width: 72%; }
+      85%  { width: 88%; }
+      100% { width: 95%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="blob-wrap">
+    <div class="blob"></div>
+  </div>
+
+  <nav class="navbar navbar-fixed">
+    <a href="upload.html" onclick="event.preventDefault();navigateTo('upload.html')" ><img src="Logo.png" alt="BEATLAB" style="height:36px;object-fit:contain;" /></a>
+    <nav>
+      <div class="lang-dropdown" id="langDropdown">
+        <button class="lang-btn" onclick="toggleLang()"><svg class="globe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>English</button>
+        <div class="lang-menu">
+          <a href="#" onclick="setLang('en','English',this)" class="active">English</a>
+          <a href="#" onclick="setLang('es','Español',this)">Español</a>
+          <a href="#" onclick="setLang('fr','Français',this)">Français</a>
+          <a href="#" onclick="setLang('ko','한국어',this)">한국어</a>
+          <a href="#" onclick="setLang('zh','中文',this)">中文</a>
+          <a href="#" onclick="setLang('ja','日本語',this)">日本語</a>
+          <a href="#" onclick="setLang('de','Deutsch',this)">Deutsch</a>
+        </div>
+      </div>
+      <a href="journal.html" class="nav-journal" data-text="Practice Journal" onclick="event.preventDefault();navigateTo('journal.html')">Practice Journal</a>
+      <a href="profile.html" class="nav-profile" onclick="event.preventDefault();navigateTo('profile.html')"><div class="nav-profile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><span class="nav-profile-id" id="nav-user-id"></span></a>
+    </nav>
+  </nav>
+
+  <div class="page">
+
+    <div class="analyzing-center">
+      <div class="analyzing-letters">
+        <span style="--i:0">A</span><span style="--i:1">N</span><span style="--i:2">A</span><span style="--i:3">L</span><span style="--i:4">Y</span><span style="--i:5">Z</span><span style="--i:6">I</span><span style="--i:7">N</span><span style="--i:8">G</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ANALYZE_URL = 'https://gjhzjsojyesthrmwopkl.supabase.co/functions/v1/analyze_score';
+
+    (async function () {
+      const base64 = sessionStorage.getItem('bl_image_base64');
+      const mtype  = sessionStorage.getItem('bl_image_type');
+
+      if (!base64) {
+        navigateTo('upload.html');
+        return;
+      }
+
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        const userId = session?.user?.id ?? null;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        const res = await fetch(ANALYZE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON}`,
+            'apikey': SUPABASE_ANON,
+          },
+          body: JSON.stringify({
+            image_base64: base64,
+            image_type:   mtype,
+            user_id:      userId,
+            difficulty:   sessionStorage.getItem('bl_difficulty') || 'similar',
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const rawText = await res.text();
+        let result;
+        try { result = JSON.parse(rawText); } catch(e) { result = { error: rawText }; }
+
+        if (!res.ok || result.error) throw new Error(result.error || 'Analysis failed');
+
+        sessionStorage.setItem('bl_result', JSON.stringify(result));
+        sessionStorage.removeItem('bl_image_base64');
+        navigateTo('results.html');
+      } catch (err) {
+        alert('Analysis failed: ' + err.message);
+        navigateTo('upload.html');
+      }
+    })();
+  </script>
+  <script>window.BG_DRAMATIC = true; window.BG_ANALYZING = true;</script>
+  <script src="background.js"></script>
+  <script src="lang.js"></script>
+  <script src="transition.js"></script>
+</body>
+</html>

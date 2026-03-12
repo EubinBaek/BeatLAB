@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEATLAB – About You</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+  <div class="blob-wrap">
+    <div class="blob" style="bottom:-30vw;"></div>
+  </div>
+
+  <div class="page">
+    <div class="onboarding-wrap">
+      <a href="index.html" style="display:block;text-align:center;"><img src="Logo.png" alt="BEATLAB" style="height:52px;object-fit:contain;" /></a>
+
+      <p class="page-title">
+        Tell us about your drumming.<br>
+        This helps BeatLab recommend the right practice songs for you.
+      </p>
+
+      <!-- Favorite music genres -->
+      <div class="section-block">
+        <h3>Favorite music genres</h3>
+        <p class="section-sub">What genres do you usually play or listen to?</p>
+        <div class="tag-grid" id="genre-grid">
+          <button class="tag-btn" onclick="toggle(this)">Rock</button>
+          <button class="tag-btn" onclick="toggle(this)">Indie</button>
+          <button class="tag-btn" onclick="toggle(this)">Pop</button>
+          <button class="tag-btn" onclick="toggle(this)">Jazz</button>
+          <button class="tag-btn" onclick="toggle(this)">Metal</button>
+          <button class="tag-btn" onclick="toggle(this)">Funk</button>
+          <button class="tag-btn" onclick="toggle(this)">Others</button>
+        </div>
+      </div>
+
+      <!-- Main Goal -->
+      <div class="section-block">
+        <h3>Main Goal</h3>
+        <p class="section-sub">What is your main goal for learning drums?</p>
+        <div class="tag-grid" id="goal-grid">
+          <button class="tag-btn" onclick="this.classList.toggle('active')">Play my favorite songs</button>
+          <button class="tag-btn" onclick="this.classList.toggle('active')">Join a band</button>
+          <button class="tag-btn" onclick="this.classList.toggle('active')">Improve my skills</button>
+          <button class="tag-btn" onclick="this.classList.toggle('active')">Just for fun</button>
+          <button class="tag-btn" onclick="this.classList.toggle('active')">Others</button>
+        </div>
+      </div>
+
+      <!-- Favorite band -->
+      <div class="section-block">
+        <h3>Favorite band or music style</h3>
+        <p class="section-sub">Any a band or music style you like.</p>
+        <input type="text" id="fav-band" placeholder="Enter your favorite band or music style" style="max-width:100%;" />
+      </div>
+
+      <!-- Drumming Experience Level -->
+      <div class="section-block">
+        <h3>Drumming experience Level</h3>
+        <div class="level-list" id="level-list">
+          <button class="level-btn" onclick="toggleSingle(this, 'level-list')">Beginner</button>
+          <button class="level-btn" onclick="toggleSingle(this, 'level-list')">Intermediate</button>
+          <button class="level-btn" onclick="toggleSingle(this, 'level-list')">Advanced</button>
+        </div>
+      </div>
+
+      <!-- Techniques – comfortable with -->
+      <div class="section-block">
+        <h3>Techniques</h3>
+        <p class="section-sub">Select the drum techniques you feel comfortable with.</p>
+        <div class="tag-grid" id="tech-comfortable">
+          <button class="tag-btn" onclick="toggle(this)">Basic Rock Groove</button>
+          <button class="tag-btn" onclick="toggle(this)">Simple skills</button>
+          <button class="tag-btn" onclick="toggle(this)">Double-Kick</button>
+          <button class="tag-btn" onclick="toggle(this)">Hi-Hat control</button>
+          <button class="tag-btn" onclick="toggle(this)">Ghost notes</button>
+          <button class="tag-btn others-btn" onclick="openTechModal('tech-comfortable')">+ Others</button>
+        </div>
+      </div>
+
+      <!-- Techniques – want to practice -->
+      <div class="section-block">
+        <p class="section-sub" style="margin-bottom:10px;">Select techniques you want to practice more.</p>
+        <div class="tag-grid" id="tech-practice">
+          <button class="tag-btn" onclick="toggle(this)">Groove timing</button>
+          <button class="tag-btn" onclick="toggle(this)">Simple skills</button>
+          <button class="tag-btn" onclick="toggle(this)">Double-Kick</button>
+          <button class="tag-btn" onclick="toggle(this)">Hi-Hat control</button>
+          <button class="tag-btn" onclick="toggle(this)">Ghost notes</button>
+          <button class="tag-btn others-btn" onclick="openTechModal('tech-practice')">+ Others</button>
+        </div>
+      </div>
+
+      <div class="finish-wrap">
+        <button onclick="handleFinish()" class="btn btn-teal" style="max-width:200px;">Finish</button>
+        <p id="finish-err" style="color:#e05a3a;font-size:0.8rem;text-align:center;margin-top:8px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .others-btn { border-style: dashed !important; opacity: 0.7; }
+    .ob-tech-pill {
+      padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.18);
+      color: var(--text-dark); cursor: pointer; transition: all .15s;
+    }
+    .ob-tech-pill.selected {
+      background: rgba(232,112,90,0.25); border-color: rgba(232,112,90,0.6);
+      font-weight: 600;
+    }
+    #tech-modal-ob {
+      display: none; position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw; height: 100vh;
+      z-index: 300;
+      background: rgba(0,0,0,0.15); backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    #tech-modal-ob.open {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ob-modal-box {
+      position: relative; margin: auto;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 24px; padding: 36px; width: 400px;
+      max-height: 70vh; overflow-y: auto;
+      backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+    }
+    .ob-modal-box h3 { font-size: 1rem; font-weight: 700; margin-bottom: 20px; color: var(--text-dark); }
+    .ob-modal-btn {
+      border-radius: 10px; padding: 9px 22px; font-size: 0.82rem; cursor: pointer;
+    }
+    .ob-modal-cancel {
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      color: var(--text-dark);
+    }
+    .ob-modal-cancel:hover { background: rgba(255,255,255,0.35); }
+    .ob-modal-add {
+      background: rgba(232,112,90,0.22); border: 1px solid rgba(232,112,90,0.5);
+      color: #c0442a; font-weight: 700;
+    }
+    .ob-modal-add:hover { background: rgba(232,112,90,0.38); }
+  </style>
+
+  <script>
+    const EXTRA_TECHNIQUES = [
+      '8th Note Hi-Hat','16th Note Hi-Hat','Hi-Hat Accent','Open Hi-Hat','Closed Hi-Hat',
+      'Single Kick','Crash Accent','Ride Cymbal','Cross-Stick','Backbeat',
+      'Flam','Roll','Paradiddle','Shuffle','Linear Drumming','Polyrhythm',
+    ];
+
+    let obModalTarget = '';
+    let obModalSelected = new Set();
+
+    function openTechModal(gridId) {
+      obModalTarget = gridId;
+      obModalSelected = new Set();
+      // Techniques already added to the grid
+      const existing = [...document.querySelectorAll(`#${gridId} .tag-btn:not(.others-btn)`)]
+        .map(b => b.textContent.trim().toLowerCase());
+
+      const grid = document.getElementById('ob-modal-grid');
+      grid.innerHTML = '';
+      EXTRA_TECHNIQUES.forEach(name => {
+        if (existing.includes(name.toLowerCase())) return;
+        const pill = document.createElement('span');
+        pill.className = 'ob-tech-pill';
+        pill.textContent = name;
+        pill.onclick = () => {
+          pill.classList.toggle('selected');
+            if (pill.classList.contains('selected')) obModalSelected.add(name);
+            else obModalSelected.delete(name);
+        };
+        grid.appendChild(pill);
+      });
+
+      document.getElementById('tech-modal-ob').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeTechModal() {
+      document.getElementById('tech-modal-ob').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function confirmTechModal() {
+      const grid = document.getElementById(obModalTarget);
+      const othersBtn = grid.querySelector('.others-btn');
+      [...obModalSelected].forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn active';
+        btn.textContent = name;
+        btn.onclick = () => btn.classList.toggle('active');
+        grid.insertBefore(btn, othersBtn);
+      });
+      closeTechModal();
+    }
+
+    function toggle(btn) {
+      btn.classList.toggle('active');
+    }
+
+    function toggleSingle(btn, groupId) {
+      const group = document.getElementById(groupId);
+      group.querySelectorAll('.tag-btn, .level-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function getSelected(gridId) {
+      return [...document.querySelectorAll(`#${gridId} .active`)]
+        .map(b => b.textContent.trim());
+    }
+
+    async function handleFinish() {
+      const btn = document.querySelector('.finish-wrap .btn');
+      const originalBtnText = btn.textContent;
+      const err = document.getElementById('finish-err');
+      btn.textContent = 'Saving…';
+      btn.disabled = true;
+      err.textContent = '';
+
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { err.textContent = 'Not logged in.'; btn.textContent = originalBtnText; btn.disabled = false; return; }
+
+      const profile = {
+        id:                     user.id,
+        genres:                 getSelected('genre-grid'),
+        favorite_band:          document.getElementById('fav-band').value.trim() || null,
+        level:                  getSelected('level-list')[0] || null,
+        techniques_comfortable: getSelected('tech-comfortable'),
+        techniques_practice:    getSelected('tech-practice'),
+      };
+
+      const { error } = await sb.from('profiles').upsert(profile);
+
+      if (error) {
+        err.textContent = error.message;
+        btn.textContent = originalBtnText;
+        btn.disabled = false;
+      } else {
+        navigateTo('upload.html');
+      }
+    }
+  </script>
+  <!-- Extra Techniques Modal — must be direct child of body for position:fixed to work -->
+  <div id="tech-modal-ob">
+    <div class="ob-modal-box">
+      <h3>Select Techniques</h3>
+      <div id="ob-modal-grid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="ob-modal-btn ob-modal-cancel" onclick="closeTechModal()">Cancel</button>
+        <button class="ob-modal-btn ob-modal-add" onclick="confirmTechModal()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="background.js"></script>
+  <script src="transition.js"></script>
+</body>
+</html>

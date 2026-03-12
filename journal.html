@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEATLAB – Practice Journal</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth-guard.js"></script>
+  <style>
+    /* ── Layout ── */
+    .journal-page {
+      width: 58%; margin: 0 auto;
+      padding: 96px 0 80px;
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .journal-header { margin-bottom: 44px; margin-left: -8px; }
+    .journal-header h1 { font-size: 1.55rem; font-weight: 800; color: var(--text-dark); margin-bottom: 8px; }
+    .journal-header p  { font-size: 0.82rem; color: var(--text-light); }
+
+    /* ── Body ── */
+    .journal-body { display: grid; grid-template-columns: 130px 1fr; gap: 0; align-items: stretch; }
+
+    /* ── Sidebar ── */
+    .journal-sidebar { padding-top: 44px; display: flex; flex-direction: column; margin-left: -8px; }
+    .sidebar-heading { font-size: 0.78rem; font-weight: 700; color: var(--text-dark); margin-bottom: 16px; }
+    .filter-group { margin-bottom: 24px; }
+    .filter-group-label { font-size: 0.7rem; color: var(--text-light); margin-bottom: 8px; margin-top: 4px; }
+    .filter-item { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; cursor: pointer; }
+    .filter-item input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border: 1.5px solid rgba(30,30,30,0.3); border-radius: 3px;
+      background: rgba(255,255,255,0.3); cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s; position: relative;
+    }
+    .filter-item input[type="checkbox"]:checked { background: #1ccfc9; border-color: #1ccfc9; }
+    .filter-item input[type="checkbox"]:checked::after {
+      content: ''; position: absolute; left: 3px; top: 0.5px;
+      width: 5px; height: 8px;
+      border: 2px solid #fff; border-top: none; border-left: none;
+      transform: rotate(45deg);
+    }
+    .filter-item label { font-size: 0.76rem; color: var(--text-mid); cursor: pointer; display: flex; align-items: center; gap: 5px; }
+    .filter-count { font-size: 0.68rem; color: var(--text-light); }
+    .difficulty-heading { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text-light); margin-bottom: 8px; }
+    .difficulty-heading .info-icon {
+      width: 13px; height: 13px; border-radius: 50%;
+      border: 1.2px solid var(--text-light);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.55rem; color: var(--text-light); cursor: help; flex-shrink: 0;
+    }
+
+    /* ── Main ── */
+    .journal-main { border-left: 1px solid rgba(30,30,30,0.15); margin-left: 16px; }
+
+    /* 표 헤더는 고정, 리스트만 스크롤 */
+    #journal-list {
+      height: calc(56px * 8); /* 행 1개 ≈ 56px × 8개, 항상 고정 */
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    #journal-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    #journal-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #journal-list::-webkit-scrollbar-thumb {
+      background: rgba(30,30,30,0.18);
+      border-radius: 2px;
+    }
+    #journal-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(30,30,30,0.35);
+    }
+
+    /* Table header */
+    .table-header {
+      display: grid; grid-template-columns: 48px 1fr 120px 120px 100px;
+      border-bottom: 1.5px solid rgba(30,30,30,0.3);
+      border-top: 1.5px solid rgba(30,30,30,0.3);
+      padding: 10px 16px;
+    }
+    .table-header span { font-size: 0.76rem; font-weight: 700; color: var(--text-dark); }
+
+    /* Table rows */
+    .table-row {
+      display: grid; grid-template-columns: 48px 1fr 120px 120px 100px;
+      padding: 10px 16px; border-bottom: 1px solid rgba(30,30,30,0.08);
+      align-items: center; cursor: pointer; transition: background 0.15s;
+      height: 56px; box-sizing: border-box;
+    }
+    .table-row:hover { background: rgba(255,255,255,0.15); }
+
+    .row-cover {
+      width: 36px; height: 36px; border-radius: 6px; overflow: hidden;
+      background: linear-gradient(135deg, #3a3a3a, #666); flex-shrink: 0;
+    }
+    .row-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .row-info { padding-right: 10px; min-width: 0; }
+    .row-title { font-size: 0.82rem; font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .row-artist-sm { font-size: 0.72rem; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .row-genre-tag {
+      font-size: 0.65rem; font-weight: 500; padding: 2px 8px; border-radius: 999px;
+      background: rgba(30,30,30,0.1); color: rgba(30,30,30,0.65);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      display: inline-block; max-width: 120px;
+    }
+    .row-diff { font-size: 0.74rem; color: var(--text-mid); }
+    .progress-pill {
+      font-size: 0.68rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; display: inline-block;
+    }
+    .progress-saved       { background: rgba(200,200,200,0.3); color: rgba(30,30,30,0.65); }
+    .progress-in_progress { background: rgba(28,207,201,0.18); color: #0fa8a4; }
+    .progress-completed   { background: rgba(80,200,120,0.2);  color: #2d9e60; }
+
+    .row-source { font-size: 0.7rem; color: var(--text-light); font-weight: 500; }
+
+    /* ── Empty state ── */
+    .journal-empty {
+      padding: 78px 16px 0; color: var(--text-light);
+      font-size: 0.76rem; font-weight: 400; line-height: 1.8; text-align: center;
+    }
+
+    /* ── Bottom actions ── */
+    .journal-bottom-wrap {
+      display: flex; align-items: center;
+      margin-top: 56px; padding-left: 146px;
+    }
+    .journal-save-btn {
+      background: rgba(77,212,200,0.18); border: 1.5px solid rgba(77,212,200,0.5);
+      color: var(--text-dark); font-size: 0.88rem; font-weight: 700;
+      border-radius: 12px; padding: 13px 60px;
+      cursor: pointer; transition: all .2s; letter-spacing: 0.03em; font-family: inherit;
+    }
+    .journal-save-btn:hover { background: rgba(77,212,200,0.32); border-color: rgba(77,212,200,0.8); }
+    .journal-upload-link {
+      background: none; border: none; cursor: pointer; font-family: inherit;
+      font-size: 0.7rem; font-weight: 700; color: #1ccfc9;
+      text-decoration: underline; text-underline-offset: 3px;
+      transition: color .15s; padding: 0;
+      display: block; margin-top: auto; padding-top: 24px; text-align: left;
+    }
+    .journal-upload-link:hover { color: #0fa8a4; }
+
+    /* ── Detail Modal ── */
+    .detail-backdrop {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+    }
+    .detail-backdrop.open { display: flex; }
+    .detail-box {
+      background: rgba(243, 237, 216, 0.96); backdrop-filter: blur(20px);
+      border: 1px solid rgba(200,160,140,0.3); border-radius: 24px;
+      width: 580px; max-width: 94vw; max-height: 88vh;
+      overflow-y: auto; padding: 36px 40px 32px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    .detail-close {
+      position: absolute; top: 18px; right: 22px;
+      background: none; border: none; cursor: pointer;
+      font-size: 1.4rem; color: var(--text-light); line-height: 1;
+      transition: color .15s;
+    }
+    .detail-close:hover { color: var(--text-dark); }
+
+    .detail-top { display: flex; gap: 22px; margin-bottom: 28px; }
+    .detail-cover {
+      width: 110px; height: 110px; border-radius: 12px; overflow: hidden; flex-shrink: 0;
+      background: linear-gradient(135deg, #3a3a3a, #666);
+    }
+    .detail-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .detail-meta { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
+    .detail-title { font-size: 1.15rem; font-weight: 800; color: var(--text-dark); }
+    .detail-artist { font-size: 0.84rem; color: var(--text-mid); }
+    .detail-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .detail-tag {
+      font-size: 0.65rem; font-weight: 500; padding: 2px 9px; border-radius: 999px;
+      background: rgba(30,30,30,0.1); color: rgba(30,30,30,0.65);
+    }
+    .detail-tag-source {
+      font-size: 0.62rem; font-weight: 600; padding: 2px 9px; border-radius: 999px;
+      background: rgba(28,207,201,0.15); color: #0fa8a4;
+    }
+
+    .detail-divider { border: none; border-top: 1px solid rgba(30,30,30,0.1); margin: 0 0 20px; }
+
+    .detail-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 20px;
+    }
+    .detail-field label { font-size: 0.68rem; font-weight: 600; color: var(--text-light); display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .detail-field p { font-size: 0.82rem; color: var(--text-dark); }
+
+    .detail-techniques { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+    .detail-technique-tag {
+      font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+      background: rgba(232,112,90,0.12); color: #b85040;
+    }
+
+    .detail-reason {
+      font-size: 0.8rem; color: var(--text-mid); line-height: 1.65;
+      background: rgba(255,255,255,0.3); border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 20px; font-style: italic;
+    }
+
+    .detail-edit-label { font-size: 0.72rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px; display: block; }
+    .detail-status-wrap { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .status-chip {
+      padding: 6px 16px; border-radius: 999px; font-size: 0.74rem; font-weight: 600;
+      border: 1.5px solid rgba(30,30,30,0.2); background: rgba(255,255,255,0.3);
+      color: var(--text-mid); cursor: pointer; transition: all .15s; font-family: inherit;
+    }
+    .status-chip.active-saved       { background: rgba(200,200,200,0.4); border-color: rgba(100,100,100,0.4); color: rgba(30,30,30,0.8); }
+    .status-chip.active-in_progress { background: rgba(28,207,201,0.2);  border-color: #1ccfc9; color: #0fa8a4; }
+    .status-chip.active-completed   { background: rgba(80,200,120,0.25); border-color: #3aaa6a; color: #2d9e60; }
+    .status-chip:hover { background: rgba(255,255,255,0.5); }
+
+    .detail-notes {
+      width: 100%; min-height: 90px; resize: vertical;
+      border: 1.5px solid rgba(200,160,140,0.4); border-radius: 10px;
+      background: rgba(255,255,255,0.35); padding: 10px 14px;
+      font-family: inherit; font-size: 0.82rem; color: var(--text-dark);
+      outline: none; transition: border-color .15s;
+    }
+    .detail-notes:focus { border-color: rgba(77,212,200,0.6); }
+
+    .detail-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .detail-delete-btn {
+      background: none; border: none; cursor: pointer; font-family: inherit;
+      font-size: 0.78rem; color: rgba(200,70,60,0.6); transition: color .15s;
+    }
+    .detail-delete-btn:hover { color: rgba(200,70,60,1); }
+    .detail-save-btn {
+      background: rgba(77,212,200,0.18); border: 1.5px solid rgba(77,212,200,0.5);
+      color: var(--text-dark); font-size: 0.86rem; font-weight: 700;
+      border-radius: 10px; padding: 10px 36px;
+      cursor: pointer; transition: all .2s; font-family: inherit;
+    }
+    .detail-save-btn:hover { background: rgba(77,212,200,0.32); }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1300px) { .journal-page { width: 72%; } }
+    @media (max-width: 1000px) { .journal-page { width: 85%; } }
+    @media (max-width: 900px) {
+      .journal-page { width: 90%; }
+      .journal-body { grid-template-columns: 110px 1fr; }
+      .table-header, .table-row { grid-template-columns: 48px 1fr 110px 90px; }
+      .table-header span:nth-child(3), .table-row .row-genre-tag { display: none; }
+    }
+    @media (max-width: 650px) {
+      .journal-page { width: 95%; padding: 90px 0 60px; }
+      .journal-body { grid-template-columns: 1fr; }
+      .journal-sidebar { padding-top: 0; margin-bottom: 20px; }
+      .journal-main { border-left: none; border-top: 1px solid rgba(30,30,30,0.15); }
+    }
+  </style>
+</head>
+<body>
+  <div class="blob-wrap"><div class="blob"></div></div>
+
+  <nav class="navbar navbar-fixed">
+    <a href="upload.html" onclick="event.preventDefault();navigateTo('upload.html')">
+      <img src="Logo.png" alt="BEATLAB" style="height:36px;object-fit:contain;" />
+    </a>
+    <nav>
+      <div class="lang-dropdown" id="langDropdown">
+        <button class="lang-btn" onclick="toggleLang()"><svg class="globe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>English</button>
+        <div class="lang-menu">
+          <a href="#" onclick="setLang('en','English',this)" class="active">English</a>
+          <a href="#" onclick="setLang('es','Español',this)">Español</a>
+          <a href="#" onclick="setLang('fr','Français',this)">Français</a>
+          <a href="#" onclick="setLang('ko','한국어',this)">한국어</a>
+          <a href="#" onclick="setLang('zh','中文',this)">中文</a>
+          <a href="#" onclick="setLang('ja','日本語',this)">日本語</a>
+          <a href="#" onclick="setLang('de','Deutsch',this)">Deutsch</a>
+        </div>
+      </div>
+      <a href="journal.html" class="nav-journal" data-text="Practice Journal" onclick="event.preventDefault();navigateTo('journal.html')">Practice Journal</a>
+      <a href="profile.html" class="nav-profile" onclick="event.preventDefault();navigateTo('profile.html')">
+        <div class="nav-profile-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        </div>
+        <span class="nav-profile-id" id="nav-user-id"></span>
+      </a>
+    </nav>
+  </nav>
+
+  <div class="page page-fixed">
+    <div class="journal-page">
+
+      <div class="journal-header">
+        <h1>Practice Journal</h1>
+        <p>Track the songs you've saved, practiced, and completed.</p>
+      </div>
+
+      <div class="journal-body" id="journal-body">
+        <!-- Sidebar -->
+        <div class="journal-sidebar">
+          <div class="sidebar-heading">Filters</div>
+          <div class="filter-group">
+            <div class="filter-item">
+              <input type="checkbox" id="f-all" checked onchange="applyFilter('all',this)">
+              <label for="f-all"><span class="filter-label-text">All</span></label>
+            </div>
+          </div>
+          <div class="filter-group">
+            <div class="filter-group-label">Progress</div>
+            <div class="filter-item">
+              <input type="checkbox" id="f-saved" checked onchange="applyFilter('saved',this)">
+              <label for="f-saved"><span class="filter-label-text">Saved</span> <span class="filter-count" id="cnt-saved">0</span></label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="f-inprogress" checked onchange="applyFilter('in_progress',this)">
+              <label for="f-inprogress"><span class="filter-label-text">In Progress</span> <span class="filter-count" id="cnt-inprogress">0</span></label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="f-completed" checked onchange="applyFilter('completed',this)">
+              <label for="f-completed"><span class="filter-label-text">Completed</span> <span class="filter-count" id="cnt-completed">0</span></label>
+            </div>
+          </div>
+          <div class="filter-group">
+            <div class="filter-group-label">Difficulty Level</div>
+            <div class="filter-item">
+              <input type="checkbox" id="f-beginner" checked onchange="applyFilter('Beginner',this)">
+              <label for="f-beginner"><span class="filter-label-text">Beginner</span> <span class="filter-count" id="cnt-beginner">0</span></label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="f-intermediate" checked onchange="applyFilter('Intermediate',this)">
+              <label for="f-intermediate"><span class="filter-label-text">Intermediate</span> <span class="filter-count" id="cnt-intermediate">0</span></label>
+            </div>
+            <div class="filter-item">
+              <input type="checkbox" id="f-advanced" checked onchange="applyFilter('Advanced',this)">
+              <label for="f-advanced"><span class="filter-label-text">Advanced</span> <span class="filter-count" id="cnt-advanced">0</span></label>
+            </div>
+          </div>
+          <button class="journal-upload-link" onclick="navigateTo('upload.html')">Upload Score</button>
+        </div>
+
+        <!-- Main Table -->
+        <div class="journal-main">
+          <div class="table-header">
+            <span></span>
+            <span>Title / Artist</span>
+            <span>Genre</span>
+            <span>Progress</span>
+            <span>Level</span>
+          </div>
+          <div id="journal-list"><div class="journal-empty"><p>Loading...</p></div></div>
+        </div>
+      </div>
+
+      <div class="journal-bottom-wrap">
+        <button class="journal-save-btn" onclick="saveJournal()">Save Practice Journal</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="detail-backdrop" id="detail-modal">
+    <div class="detail-box">
+      <button class="detail-close" onclick="closeDetail()">✕</button>
+
+      <div class="detail-top">
+        <div class="detail-cover" id="detail-cover"></div>
+        <div class="detail-meta">
+          <div class="detail-title" id="detail-title"></div>
+          <div class="detail-artist" id="detail-artist"></div>
+          <div class="detail-tags" id="detail-tags"></div>
+        </div>
+      </div>
+
+      <hr class="detail-divider">
+
+      <div class="detail-grid">
+        <div class="detail-field">
+          <label>Genre</label>
+          <p id="detail-genre">–</p>
+        </div>
+        <div class="detail-field">
+          <label>BPM</label>
+          <p id="detail-bpm">–</p>
+        </div>
+        <div class="detail-field">
+          <label>Difficulty</label>
+          <p id="detail-diff">–</p>
+        </div>
+        <div class="detail-field">
+          <label>Drum Techniques</label>
+          <div class="detail-techniques" id="detail-techniques"></div>
+        </div>
+      </div>
+
+      <div class="detail-reason" id="detail-reason" style="display:none;"></div>
+
+      <hr class="detail-divider">
+
+      <label class="detail-edit-label">Practice Status</label>
+      <div class="detail-status-wrap">
+        <button class="status-chip" data-val="saved"       onclick="selectStatus('saved')">Saved</button>
+        <button class="status-chip" data-val="in_progress" onclick="selectStatus('in_progress')">In Progress</button>
+        <button class="status-chip" data-val="completed"   onclick="selectStatus('completed')">Completed</button>
+      </div>
+
+      <label class="detail-edit-label" style="margin-bottom:6px;">Practice Notes</label>
+      <textarea class="detail-notes" id="detail-notes" placeholder="Add your practice notes here..."></textarea>
+
+      <div class="detail-actions">
+        <button class="detail-delete-btn" onclick="deleteEntry()">Delete from Journal</button>
+        <button class="detail-save-btn" onclick="saveDetail()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── 상태 ────────────────────────────────────────────────────────
+    let allEntries = [];
+    let currentEntryId = null;
+    let currentStatus  = 'saved';
+    let isDirty = false;
+    let pendingLevelUps = []; // Save my Journal 클릭 시 처리할 레벨업 대기 목록
+
+    const activeProgress   = new Set(['saved','in_progress','completed']);
+    const activeDifficulty = new Set(['Beginner','Intermediate','Advanced']);
+
+    function markDirty() {
+      if (isDirty) return;
+      isDirty = true;
+      const btn = document.querySelector('.journal-save-btn');
+      if (btn) {
+        btn.textContent = 'Save Practice Journal';
+        btn.style.borderColor = '';
+        btn.style.background = '';
+        btn.disabled = false;
+      }
+    }
+
+    function markSaved() {
+      isDirty = false;
+      const btn = document.querySelector('.journal-save-btn');
+      if (btn) {
+        btn.textContent = 'Saved';
+        btn.style.borderColor = 'rgba(77,212,200,0.9)';
+        btn.style.background = 'rgba(77,212,200,0.3)';
+      }
+    }
+
+    // ── Supabase fetch ──────────────────────────────────────────────
+    async function loadEntries() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return [];
+      const { data, error } = await sb.from('practice_journal')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      if (error) { console.error(error); return []; }
+      return data || [];
+    }
+
+    async function init() {
+      allEntries = await loadEntries();
+      renderList();
+    }
+
+    // ── 필터 ────────────────────────────────────────────────────────
+    const pTypes = ['saved','in_progress','completed'];
+    const dTypes = ['Beginner','Intermediate','Advanced'];
+
+    function syncAllCheckbox() {
+      const allChecked =
+        pTypes.every(t => activeProgress.has(t)) &&
+        dTypes.every(t => activeDifficulty.has(t));
+      document.getElementById('f-all').checked = allChecked;
+    }
+
+    function applyFilter(type, cb) {
+      if (type === 'all') {
+        const on = cb.checked;
+        pTypes.forEach(t => on ? activeProgress.add(t) : activeProgress.delete(t));
+        dTypes.forEach(t => on ? activeDifficulty.add(t) : activeDifficulty.delete(t));
+        document.querySelectorAll('.filter-item input:not(#f-all)').forEach(el => el.checked = on);
+      } else if (pTypes.includes(type)) {
+        cb.checked ? activeProgress.add(type) : activeProgress.delete(type);
+        syncAllCheckbox();
+      } else if (dTypes.includes(type)) {
+        cb.checked ? activeDifficulty.add(type) : activeDifficulty.delete(type);
+        syncAllCheckbox();
+      }
+      renderList();
+    }
+
+    // ── 렌더링 ───────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function progressLabel(s) {
+      const raw = s === 'in_progress' ? 'In Progress' : s === 'completed' ? 'Completed' : 'Saved';
+      return (window.translateText && window.translateText(raw)) || raw;
+    }
+
+    function levelLabel(diff) {
+      return (window.translateText && window.translateText(diff)) || diff;
+    }
+
+    function updateCounts(entries) {
+      const c = (fn) => entries.filter(fn).length;
+      document.getElementById('cnt-saved').textContent        = c(e => e.status === 'saved');
+      document.getElementById('cnt-inprogress').textContent   = c(e => e.status === 'in_progress');
+      document.getElementById('cnt-completed').textContent    = c(e => e.status === 'completed');
+      document.getElementById('cnt-beginner').textContent     = c(e => (e.personalized_difficulty||'').toLowerCase().includes('beginner'));
+      document.getElementById('cnt-intermediate').textContent = c(e => (e.personalized_difficulty||'').toLowerCase().includes('intermediate'));
+      document.getElementById('cnt-advanced').textContent     = c(e => (e.personalized_difficulty||'').toLowerCase().includes('advanced'));
+    }
+
+    function matchDifficulty(diff) {
+      const d = (diff || '').toLowerCase().trim();
+      // 난이도 값이 없거나 알 수 없으면 항상 표시
+      if (!d || d === '–') return true;
+      if (d.includes('advanced'))     return activeDifficulty.has('Advanced');
+      if (d.includes('intermediate')) return activeDifficulty.has('Intermediate');
+      if (d.includes('beginner'))     return activeDifficulty.has('Beginner');
+      return true; // 그 외 알 수 없는 값도 표시
+    }
+
+    function renderList() {
+      updateCounts(allEntries);
+      const filtered = allEntries.filter(e => {
+        if (!activeProgress.has(e.status)) return false;
+        return matchDifficulty(e.personalized_difficulty);
+      });
+
+      const listEl = document.getElementById('journal-list');
+      if (!filtered.length) {
+        listEl.innerHTML = `<div class="journal-empty"><p>No entries yet.<br>Save songs from the analysis results to build your journal!</p></div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(e => {
+        const coverHtml = e.album_cover_url
+          ? `<div class="row-cover"><img src="${esc(e.album_cover_url)}" alt="" loading="lazy"></div>`
+          : `<div class="row-cover"></div>`;
+        return `
+          <div class="table-row" onclick="openDetail('${esc(e.id)}')">
+            ${coverHtml}
+            <div class="row-info">
+              <div class="row-title">${esc(e.song_title)}</div>
+              <div class="row-artist-sm">${esc(e.artist)}</div>
+            </div>
+            <div style="padding-right:8px;overflow:hidden;"><span class="row-genre-tag">${esc(e.genre||'–')}</span></div>
+            <div><span class="progress-pill progress-${e.status}">${progressLabel(e.status)}</span></div>
+            <div class="row-source">${esc(levelLabel(e.personalized_difficulty || '–'))}</div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Detail Modal ─────────────────────────────────────────────────
+    function openDetail(id) {
+      const entry = allEntries.find(e => e.id === id);
+      if (!entry) return;
+      currentEntryId = id;
+      currentStatus  = entry.status;
+
+      // 커버
+      const coverEl = document.getElementById('detail-cover');
+      coverEl.innerHTML = entry.album_cover_url
+        ? `<img src="${esc(entry.album_cover_url)}" alt="">`
+        : '';
+
+      document.getElementById('detail-title').textContent  = entry.song_title || '–';
+      document.getElementById('detail-artist').textContent = entry.artist || '–';
+      document.getElementById('detail-genre').textContent  = entry.genre || '–';
+      document.getElementById('detail-bpm').textContent    = entry.bpm || '–';
+      document.getElementById('detail-diff').textContent   = entry.personalized_difficulty || '–';
+      document.getElementById('detail-notes').value        = entry.progress_notes || '';
+
+      // Tags
+      const tagsEl = document.getElementById('detail-tags');
+      tagsEl.innerHTML = [
+        entry.genre ? `<span class="detail-tag">${esc(entry.genre)}</span>` : '',
+        entry.personalized_difficulty ? `<span class="detail-tag">${esc(entry.personalized_difficulty)}</span>` : '',
+        `<span class="detail-tag-source">${entry.source === 'uploaded_target' ? 'Uploaded' : 'Recommended'}</span>`,
+      ].join('');
+
+      // Techniques
+      const techs = Array.isArray(entry.drum_techniques) ? entry.drum_techniques : [];
+      document.getElementById('detail-techniques').innerHTML = techs.length
+        ? techs.map(t => `<span class="detail-technique-tag">${esc(t)}</span>`).join('')
+        : '<span style="font-size:.78rem;color:var(--text-light)">–</span>';
+
+      // Reason
+      const reasonEl = document.getElementById('detail-reason');
+      if (entry.recommendation_reason) {
+        reasonEl.textContent = entry.recommendation_reason;
+        reasonEl.style.display = '';
+      } else {
+        reasonEl.style.display = 'none';
+      }
+
+      // Status chips (fromOpen = true → dirty 처리 안 함)
+      selectStatus(entry.status, true);
+
+      document.getElementById('detail-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDetail() {
+      document.getElementById('detail-modal').classList.remove('open');
+      document.body.style.overflow = '';
+      currentEntryId = null;
+    }
+
+    function selectStatus(val, fromOpen = false) {
+      currentStatus = val;
+      document.querySelectorAll('.status-chip').forEach(chip => {
+        chip.className = 'status-chip';
+        if (chip.dataset.val === val) chip.classList.add(`active-${val}`);
+      });
+      if (!fromOpen) markDirty();
+    }
+
+    // ── 테크닉 레벨업 ─────────────────────────────────────────────────
+    function lvLabel(lv) {
+      const n = Number(lv);
+      if (n <= 8)  return 'Beginner';
+      if (n <= 16) return 'Intermediate';
+      return 'Advanced';
+    }
+    function clampLv(lv) { return Math.min(24, Math.max(1, Number(lv))); }
+
+    function difficultyIncrease(diff) {
+      const d = (diff || '').toLowerCase();
+      if (d.includes('advanced'))     return 4;
+      if (d.includes('intermediate')) return 2;
+      return 1; // Beginner or unknown
+    }
+
+    // technique 이름 정규화 (#Basic Rock Groove → Basic Rock Groove)
+    function normTech(name) { return String(name || '').replace(/^#/, '').trim(); }
+
+    async function applyTechniqueLevelUp(entry) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return;
+      const userId = session.user.id;
+
+      // 프로필 로드
+      const { data: p, error: pErr } = await sb.from('profiles').select('strong_techniques,weak_techniques').eq('id', userId).single();
+      if (pErr || !p) return;
+
+      const parseTechs = (arr) => {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(item => {
+          if (typeof item === 'object' && item.name) return { name: item.name, level: Number(item.level) || 10, stage: item.stage || lvLabel(item.level || 10) };
+          return { name: String(item), level: 10, stage: 'Beginner' };
+        });
+      };
+
+      let strongTechs = parseTechs(typeof p.strong_techniques === 'string' ? JSON.parse(p.strong_techniques) : p.strong_techniques);
+      let weakTechs   = parseTechs(typeof p.weak_techniques   === 'string' ? JSON.parse(p.weak_techniques)   : p.weak_techniques);
+
+      const inc = difficultyIncrease(entry.personalized_difficulty);
+      const techNames = (Array.isArray(entry.drum_techniques) ? entry.drum_techniques : []).map(normTech).filter(Boolean);
+
+      if (!techNames.length) return;
+
+      // 각 테크닉에 레벨 추가
+      techNames.forEach(name => {
+        let techObj = strongTechs.find(t => normTech(t.name) === name) || weakTechs.find(t => normTech(t.name) === name);
+
+        if (techObj) {
+          // 기존 테크닉 레벨 올리기
+          techObj.level = clampLv(techObj.level + inc);
+          techObj.stage = lvLabel(techObj.level);
+        } else {
+          // 프로필에 없는 테크닉 → 새로 추가
+          techObj = { name, level: clampLv(inc), stage: lvLabel(clampLv(inc)) };
+          if (techObj.level >= 17) strongTechs.push(techObj);
+          else weakTechs.push(techObj);
+        }
+
+        // 레벨 기준으로 strong / weak 재분류
+        strongTechs = strongTechs.filter(t => normTech(t.name) !== name);
+        weakTechs   = weakTechs.filter(t => normTech(t.name) !== name);
+        if (techObj.level >= 17) strongTechs.push(techObj);
+        else weakTechs.push(techObj);
+      });
+
+      const toSave = (arr) => arr.map(t => ({ name: t.name, level: t.level, stage: lvLabel(t.level) }));
+
+      // 프로필 저장
+      await sb.from('profiles').upsert({
+        id: userId,
+        strong_techniques: toSave(strongTechs),
+        weak_techniques:   toSave(weakTechs),
+        techniques_comfortable: strongTechs.map(t => t.name),
+        techniques_practice:    weakTechs.map(t => t.name),
+      }, { onConflict: 'id' });
+    }
+
+    // Save Changes → 메모리만 업데이트, Supabase는 Save my Journal 시 처리
+    function saveDetail() {
+      if (!currentEntryId) return;
+      const notes      = document.getElementById('detail-notes').value;
+      const entry      = allEntries.find(e => e.id === currentEntryId);
+      const prevStatus = entry?.status;
+
+      // completed 최초 전환인지 감지
+      const isFirstComplete = currentStatus === 'completed'
+        && prevStatus !== 'completed'
+        && !entry?.level_applied;
+
+      // 메모리 업데이트
+      if (entry) {
+        entry.status        = currentStatus;
+        entry.progress_notes = notes;
+        if (isFirstComplete) {
+          entry.level_applied = true;
+          // 아직 목록에 없을 때만 추가
+          if (!pendingLevelUps.find(e => e.id === entry.id)) {
+            pendingLevelUps.push({ ...entry });
+          }
+        }
+      }
+
+      closeDetail();
+      renderList();
+      markDirty();
+    }
+
+    function showLevelUpNotice(entry) {
+      const techs = (Array.isArray(entry.drum_techniques) ? entry.drum_techniques : []).map(normTech).filter(Boolean);
+      const inc   = difficultyIncrease(entry.personalized_difficulty);
+      if (!techs.length) return;
+      const notice = document.createElement('div');
+      notice.style.cssText = `
+        position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
+        background:rgba(28,207,201,0.92); color:#fff; font-size:0.82rem; font-weight:700;
+        border-radius:14px; padding:14px 28px; z-index:3000;
+        box-shadow:0 8px 32px rgba(0,0,0,0.2); backdrop-filter:blur(8px);
+        text-align:center; line-height:1.6; max-width:88vw;
+        animation: fadeInUp .3s ease;
+      `;
+      notice.innerHTML = `🎯 Technique levels updated! +${inc} to ${techs.slice(0,3).join(', ')}${techs.length > 3 ? ' and more' : ''}`;
+      document.body.appendChild(notice);
+      setTimeout(() => notice.remove(), 3500);
+    }
+
+    async function deleteEntry() {
+      if (!currentEntryId) return;
+      if (!confirm('Remove this song from your journal?')) return;
+      const { error } = await sb.from('practice_journal').delete().eq('id', currentEntryId);
+      if (error) { console.error(error); return; }
+      allEntries = allEntries.filter(e => e.id !== currentEntryId);
+      closeDetail();
+      renderList();
+      markDirty();
+    }
+
+    // ── 저널 저장 버튼 ───────────────────────────────────────────────
+    async function saveJournal() {
+      const btn = document.querySelector('.journal-save-btn');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) {
+          btn.textContent = 'Not logged in';
+          setTimeout(() => { btn.textContent = 'Save Practice Journal'; btn.disabled = false; }, 2000);
+          return;
+        }
+
+        const updates = allEntries.map(e => ({
+          id: e.id,
+          user_id: session.user.id,
+          song_title: e.song_title,
+          artist: e.artist,
+          genre: e.genre,
+          bpm: e.bpm,
+          personalized_difficulty: e.personalized_difficulty,
+          drum_techniques: e.drum_techniques,
+          recommendation_reason: e.recommendation_reason,
+          album_cover_url: e.album_cover_url,
+          status: e.status,
+          progress_notes: e.progress_notes || '',
+          source: e.source,
+          created_at: e.created_at,
+        }));
+
+        if (updates.length > 0) {
+          const { error } = await sb.from('practice_journal').upsert(updates, { onConflict: 'id' });
+          if (error) throw error;
+        }
+
+        // 대기 중인 레벨업 처리
+        if (pendingLevelUps.length > 0) {
+          const toProcess = [...pendingLevelUps];
+          pendingLevelUps = [];
+          for (const entry of toProcess) {
+            await applyTechniqueLevelUp(entry).catch(console.error);
+          }
+          // 레벨업 알림 (마지막 항목 기준)
+          if (toProcess.length > 0) showLevelUpNotice(toProcess[toProcess.length - 1]);
+        }
+
+        markSaved();
+      } catch (err) {
+        console.error('Save error:', err);
+        btn.textContent = 'Error – try again';
+        btn.style.borderColor = 'rgba(200,70,60,0.5)';
+        setTimeout(() => { btn.textContent = 'Save Practice Journal'; btn.style.borderColor = ''; btn.disabled = false; }, 2500);
+      }
+    }
+
+    // ── 닫기 이벤트 ─────────────────────────────────────────────────
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDetail();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+    // 노트 입력 시 dirty 표시
+    document.getElementById('detail-notes').addEventListener('input', markDirty);
+
+    init();
+  </script>
+
+  <script src="lang.js"></script>
+  <script src="background.js"></script>
+  <script src="transition.js"></script>
+</div>
+</body>
+</html>

@@ -1,0 +1,766 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #F3EDD8;
+  --blob-orange: #E8705A;
+  --blob-teal: #4DD4C8;
+  --text-dark: #1a1a1a;
+  --text-mid: #444;
+  --text-light: #888;
+  --input-bg: rgba(240, 210, 190, 0.45);
+  --input-border: rgba(200, 160, 140, 0.4);
+  --btn-teal: #7DDBD5;
+  --btn-teal-dark: #4DC8C0;
+  --white: #ffffff;
+}
+
+html {
+  height: 100%;
+  overflow-y: scroll;
+}
+
+body {
+  min-height: 100%;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  color: var(--text-dark);
+  overflow-x: hidden;
+}
+
+/* ── Blob Background ── */
+.blob-wrap {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.blob {
+  position: absolute;
+  left: 50%;
+  bottom: -20vw;
+  transform: translateX(-50%);
+  width: 120vw;
+  height: 120vw;
+  max-width: 1400px;
+  max-height: 1400px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 45%,
+    #4DD4C8 0%,
+    #4DD4C8 8%,
+    #c9a090 18%,
+    #E8705A 30%,
+    #e8906a 45%,
+    #f0c0a0 60%,
+    transparent 75%
+  );
+  filter: blur(40px);
+  opacity: 0.85;
+}
+
+.blob::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 62%,
+    rgba(77, 212, 200, 0.6) 68%,
+    rgba(77, 212, 200, 0.25) 78%,
+    transparent 90%
+  );
+  filter: blur(20px);
+}
+
+/* ── Navbar ── */
+.navbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 56px 26px;
+  border-bottom: 1px solid rgba(153, 153, 153, 0.7);
+}
+
+.navbar ~ * {
+  margin-top: 16px;
+}
+
+.navbar-fixed {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(243, 237, 216, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.navbar-fixed ~ * {
+  margin-top: 0;
+}
+
+/* ── Language Dropdown ── */
+.lang-dropdown {
+  position: relative;
+}
+
+.lang-btn {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-dark);
+  font-family: inherit;
+  padding: 6px 12px 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+  transition: background 0.2s;
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.lang-btn .globe-icon {
+  width: 15px;
+  height: 15px;
+  opacity: 0.75;
+}
+
+.lang-btn::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.55;
+  transition: transform 0.2s;
+  margin-left: 1px;
+}
+
+.lang-dropdown.open .lang-btn::after {
+  transform: rotate(180deg);
+}
+
+.lang-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: rgba(248, 242, 225, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(150, 130, 110, 0.2);
+  border-radius: 10px;
+  padding: 6px 0;
+  min-width: 130px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  z-index: 100;
+}
+
+.lang-dropdown.open .lang-menu {
+  display: block;
+}
+
+.lang-menu a {
+  display: block;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  color: var(--text-dark) !important;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.lang-menu a:hover {
+  background: rgba(77, 212, 200, 0.15);
+}
+
+.lang-menu a.active {
+  color: #4DD4C8 !important;
+  font-weight: 600;
+}
+
+.page-fixed {
+  padding-top: 80px;
+}
+
+.navbar .logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-dark);
+  text-decoration: none;
+  font-style: italic;
+}
+
+.navbar nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-right: 8px;
+}
+
+.navbar nav a {
+  font-size: 0.875rem;
+  color: var(--text-dark);
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.navbar nav a.nav-journal {
+  font-weight: 400;
+  letter-spacing: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* 굵은 글자 너비를 미리 차지해서 호버 시 레이아웃 변화 없음 */
+.navbar nav a.nav-journal::after {
+  content: attr(data-text);
+  font-weight: 900;
+  letter-spacing: 0;
+  height: 0;
+  line-height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+.navbar nav a.nav-journal:hover {
+  font-weight: 900;
+  letter-spacing: 0;
+  /* text-decoration이 실제 텍스트 너비만큼만 밑줄을 그음 */
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px !important;
+}
+
+.navbar nav a.nav-profile {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 11px;
+  text-decoration: none;
+  color: var(--text-dark);
+}
+.navbar nav a.nav-profile:hover { opacity: 1; }
+.nav-profile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.45);
+  backdrop-filter: blur(8px);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.nav-profile-id {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-dark);
+  max-width: 120px;
+  white-space: nowrap;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+/* 굵은 글자 너비를 미리 예약해서 호버 시 레이아웃 변화 없음 */
+.nav-profile-id::after {
+  content: attr(data-text);
+  font-weight: 900;
+  height: 0;
+  line-height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.navbar nav a.nav-profile:hover .nav-profile-id {
+  font-weight: 900;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+.navbar nav a:hover {
+  opacity: 0.7;
+}
+
+/* ── Logo SVG Text (centered pages) ── */
+.logo-center {
+  display: block;
+  text-align: center;
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--text-dark);
+  font-style: italic;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.logo-center .beat-x {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── Page Wrapper ── */
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Auth Card (center layout for login/signup/welcome) ── */
+.auth-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px 120px;
+  position: relative;
+  z-index: 2;
+}
+
+.auth-center .subtitle {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-mid);
+  line-height: 1.6;
+}
+
+/* ── Form Group ── */
+.form-group {
+  width: 100%;
+  max-width: 240px;
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  color: var(--text-mid);
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* ── Inputs ── */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  font-size: 0.85rem;
+  color: var(--text-dark);
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+input::placeholder {
+  color: rgba(100, 70, 60, 0.5);
+}
+
+input:focus {
+  border-color: rgba(200, 140, 110, 0.7);
+  background: rgba(240, 215, 195, 0.55);
+}
+
+/* ── Forgot Password Link ── */
+.forgot-link {
+  font-size: 0.78rem;
+  color: var(--text-mid);
+  text-decoration: none;
+  text-align: center;
+  display: block;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Auth Note (already have account) ── */
+.auth-note {
+  font-size: 0.78rem;
+  color: var(--text-mid);
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.auth-note a {
+  color: var(--text-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  transition: opacity 0.2s, transform 0.1s;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-teal {
+  background: linear-gradient(135deg, #90E0DB, #5ECEC8);
+  color: #1a4a47;
+}
+
+.btn-teal:hover {
+  opacity: 0.9;
+}
+
+.btn-outline {
+  background: rgba(240, 210, 190, 0.5);
+  color: var(--text-dark);
+  border: 1px solid var(--input-border);
+  backdrop-filter: blur(4px);
+}
+
+.btn-outline:hover {
+  background: rgba(240, 210, 190, 0.7);
+}
+
+/* ── Welcome Buttons ── */
+.welcome-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 220px;
+  margin-top: 36px;
+}
+
+/* ── Onboarding Page ── */
+.onboarding-wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.onboarding-wrap .page-title {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+  line-height: 1.7;
+  margin-top: 18px;
+}
+
+.section-block {
+  margin-top: 36px;
+}
+
+.section-block h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+
+.section-block .section-sub {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-bottom: 16px;
+}
+
+/* ── Tag Grid ── */
+.tag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tag-grid .tag-btn,
+.tag-list .tag-btn {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: rgba(240, 210, 190, 0.4);
+  font-size: 0.82rem;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-dark);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s, border-color 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.tag-btn:hover,
+.tag-btn.active {
+  background: rgba(90, 200, 195, 0.3);
+  border-color: rgba(77, 200, 195, 0.6);
+}
+
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-list .tag-btn {
+  text-align: center;
+}
+
+/* ── Experience Level ── */
+.level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.level-btn {
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: rgba(240, 210, 190, 0.4);
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-dark);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s, border-color 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.level-btn:hover,
+.level-btn.active {
+  background: rgba(90, 200, 195, 0.3);
+  border-color: rgba(77, 200, 195, 0.6);
+}
+
+.finish-wrap {
+  margin-top: 48px;
+  display: flex;
+  justify-content: center;
+}
+
+.finish-wrap .btn {
+  max-width: 200px;
+}
+
+/* ── Upload Page ── */
+.upload-page-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 80px);
+  width: 100%;
+  padding-bottom: 80px; /* 중앙을 40px 위로 올림 */
+}
+
+.upload-wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 620px;
+  width: 100%;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.upload-wrap h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.upload-wrap .upload-desc {
+  font-size: 0.85rem;
+  color: var(--text-mid);
+  margin-bottom: 28px;
+}
+
+.dropzone {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 16px;
+  padding: 56px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  border: 1.5px dashed transparent;
+  transition: border-color 0.2s, background 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: rgba(77, 200, 195, 0.5);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.dropzone-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2.5px solid #E8705A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #E8705A;
+}
+
+.dropzone-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.dropzone p {
+  font-size: 0.82rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+.dropzone .file-name {
+  font-size: 0.85rem;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+/* ── Practice Options ── */
+.practice-section {
+  margin-top: 28px;
+}
+
+.practice-label {
+  font-size: 0.82rem;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  display: inline-block;
+}
+
+.practice-question {
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.radio-group {
+  display: flex;
+  justify-content: center;
+  gap: 36px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+}
+
+.radio-item input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(150, 150, 150, 0.5);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .18s;
+}
+
+.radio-item input[type="radio"]:checked {
+  border-color: #4DD4C8;
+  background: radial-gradient(circle, #4DD4C8 40%, transparent 40%);
+}
+
+.analyze-btn-wrap {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.analyze-btn-wrap .btn {
+  max-width: 180px;
+}
+
+/* ── Analyzing Page ── */
+.analyzing-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 20vh;
+}
+
+.analyzing-text {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: rgba(180, 140, 120, 0.25);
+  margin: 4px 0;
+}
